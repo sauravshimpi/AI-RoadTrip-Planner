@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CordinateResponse {
 
-    private Double longitude;
     private Double latitude;
+    private Double longitude;
+    
+    
 }

@@ -1,6 +1,7 @@
 package com.codefor.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,16 +17,17 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/trip-plan")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173")
 public class TripPlanController {
 
     private final TripPlanService tripPlanService;
 
     @PostMapping
-    public ResponseEntity<TripPlanResponse> generateTripPlan(
+    public ResponseEntity<TripPlanResponse> generateTrip(
             @Valid @RequestBody RouteRequest request) {
 
-        return ResponseEntity.ok(
-                tripPlanService.generateTripPlan(request)
-        );
+        TripPlanResponse response = tripPlanService.generateTripPlan(request);
+
+        return ResponseEntity.ok(response);
     }
 }

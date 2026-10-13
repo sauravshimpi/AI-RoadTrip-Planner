@@ -12,14 +12,20 @@ import lombok.NoArgsConstructor;
 public class TripPlanResponse {
 
     private String startLocation;
+
     private String destination;
 
     private Double distance;
+
     private Integer durationMinutes;
+
+    private String duration;
 
     private List<List<Double>> routeCoordinates;
 
     private List<PlaceResponse> famousPlaces;
 
     private WeatherResponse weather;
+
+    private AiSuggestionResponse aiSuggestions;
 }

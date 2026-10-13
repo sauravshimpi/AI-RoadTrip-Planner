@@ -48,14 +48,6 @@ public class PlaceApiClient {
                 "limit", 20
         );
 
-//        return restClient.post()
-//                .uri(poiUrl)
-//                .header("Authorization", apiKey)
-//                .contentType(MediaType.APPLICATION_JSON)
-//                .body(body)
-//                .retrieve()
-//                .body(String.class);
-        
         return restClient.post()
                 .uri(poiUrl)
                 .header("Authorization", apiKey)
@@ -68,17 +60,67 @@ public class PlaceApiClient {
 
                             String errorBody =
                                     new String(
-                                            response.getBody().readAllBytes()
+                                            response.getBody()
+                                                    .readAllBytes()
                                     );
 
                             System.out.println(
                                     "POI API ERROR: "
-                                    + response.getStatusCode()
+                                            + response.getStatusCode()
                             );
 
+                            System.out.println(errorBody);
+                        }
+                )
+                .body(String.class);
+    }
+
+    public String getPlacesAlongRoute(
+            List<List<Double>> routeCoordinates) {
+
+        Map<String, Object> geometry = Map.of(
+                "geojson",
+                Map.of(
+                        "type", "LineString",
+                        "coordinates", routeCoordinates
+                ),
+                "buffer", 2000
+        );
+
+        Map<String, Object> filters = Map.of(
+                "category_group_ids",
+                List.of(220, 330, 620)
+        );
+
+        Map<String, Object> body = Map.of(
+                "request", "pois",
+                "geometry", geometry,
+                "filters", filters,
+                "limit", 50
+        );
+
+        return restClient.post()
+                .uri(poiUrl)
+                .header("Authorization", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(
+                        status -> status.is4xxClientError(),
+                        (request, response) -> {
+
+                            String errorBody =
+                                    new String(
+                                            response.getBody()
+                                                    .readAllBytes()
+                                    );
+
                             System.out.println(
-                                    errorBody
+                                    "POI ROUTE API ERROR: "
+                                            + response.getStatusCode()
                             );
+
+                            System.out.println(errorBody);
                         }
                 )
                 .body(String.class);

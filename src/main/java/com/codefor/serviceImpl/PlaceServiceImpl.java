@@ -25,16 +25,34 @@ public class PlaceServiceImpl implements PlaceService {
             Double longitude,
             Double latitude) {
 
-        String response =
-                placeApiClient.getPlaces(longitude, latitude);
-
         List<PlaceResponse> places = new ArrayList<>();
 
         try {
 
-            JsonNode root = objectMapper.readTree(response);
+            String response =
+                    placeApiClient.getPlaces(
+                            longitude,
+                            latitude
+                    );
+            
+            System.out.println("ROUTE POI RESPONSE:");
+            System.out.println(response);
 
-            JsonNode features = root.path("features");
+            if (response == null || response.isBlank()) {
+                return places;
+            }
+
+            response = response.replace("NaN", "null");
+
+            JsonNode root =
+                    objectMapper.readTree(response);
+
+            JsonNode features =
+                    root.path("features");
+
+            if (!features.isArray()) {
+                return places;
+            }
 
             for (JsonNode feature : features) {
 
@@ -44,9 +62,21 @@ public class PlaceServiceImpl implements PlaceService {
                         .path("name")
                         .asText("Unknown Place");
 
+                if ("Unknown Place".equalsIgnoreCase(name)) {
+                    continue;
+                }
+
                 JsonNode coordinates = feature
                         .path("geometry")
                         .path("coordinates");
+
+                if (!coordinates.isArray()
+                        || coordinates.size() < 2
+                        || coordinates.get(0).isNull()
+                        || coordinates.get(1).isNull()) {
+
+                    continue;
+                }
 
                 Double placeLongitude =
                         coordinates.get(0).asDouble();
@@ -54,14 +84,13 @@ public class PlaceServiceImpl implements PlaceService {
                 Double placeLatitude =
                         coordinates.get(1).asDouble();
 
-                String category = "Tourist Place";
-
-                PlaceResponse place = new PlaceResponse(
-                        name,
-                        category,
-                        placeLongitude,
-                        placeLatitude
-                );
+                PlaceResponse place =
+                        new PlaceResponse(
+                                name,
+                                "Tourist Place",
+                                placeLongitude,
+                                placeLatitude
+                        );
 
                 places.add(place);
             }
@@ -70,10 +99,16 @@ public class PlaceServiceImpl implements PlaceService {
 
         } catch (Exception e) {
 
-            throw new RuntimeException(
-                    "Unable to process places response",
-                    e
+            System.out.println(
+                    "Places API Error for longitude: "
+                            + longitude
+                            + ", latitude: "
+                            + latitude
             );
+
+            e.printStackTrace();
+
+            return places;
         }
     }
 
@@ -81,41 +116,100 @@ public class PlaceServiceImpl implements PlaceService {
     public List<PlaceResponse> getPlacesAlongRoute(
             List<List<Double>> routeCoordinates) {
 
-        List<PlaceResponse> allPlaces = new ArrayList<>();
+        List<PlaceResponse> places = new ArrayList<>();
 
-        if (routeCoordinates == null || routeCoordinates.isEmpty()) {
-            return allPlaces;
+        if (routeCoordinates == null
+                || routeCoordinates.size() < 2) {
+
+            return places;
         }
 
-        int totalPoints = routeCoordinates.size();
-        int step = Math.max(totalPoints / 5, 1);
+        try {
 
-        for (int i = 0; i < totalPoints; i += step) {
+            String response =
+                    placeApiClient
+                            .getPlacesAlongRoute(
+                                    routeCoordinates
+                            );
 
-            List<Double> point = routeCoordinates.get(i);
+            if (response == null || response.isBlank()) {
+                return places;
+            }
 
-            Double longitude = point.get(0);
-            Double latitude = point.get(1);
+            response = response.replace("NaN", "null");
 
-            List<PlaceResponse> nearbyPlaces =
-                    getNearbyPlaces(longitude, latitude);
+            JsonNode root =
+                    objectMapper.readTree(response);
 
-            for (PlaceResponse place : nearbyPlaces) {
+            JsonNode features =
+                    root.path("features");
 
-                boolean alreadyExists = allPlaces.stream()
-                        .anyMatch(existing ->
-                                existing.getName()
-                                        .equalsIgnoreCase(place.getName())
-                        );
+            if (!features.isArray()) {
+                return places;
+            }
 
-                if (!alreadyExists
-                        && !"Unknown Place".equalsIgnoreCase(place.getName())) {
+            for (JsonNode feature : features) {
 
-                    allPlaces.add(place);
+                String name = feature
+                        .path("properties")
+                        .path("osm_tags")
+                        .path("name")
+                        .asText("Unknown Place");
+
+                if ("Unknown Place".equalsIgnoreCase(name)) {
+                    continue;
+                }
+
+                JsonNode coordinates = feature
+                        .path("geometry")
+                        .path("coordinates");
+
+                if (!coordinates.isArray()
+                        || coordinates.size() < 2
+                        || coordinates.get(0).isNull()
+                        || coordinates.get(1).isNull()) {
+
+                    continue;
+                }
+
+                Double longitude =
+                        coordinates.get(0).asDouble();
+
+                Double latitude =
+                        coordinates.get(1).asDouble();
+
+                boolean alreadyExists =
+                        places.stream()
+                                .anyMatch(existing ->
+                                        existing.getName() != null
+                                                &&
+                                        existing.getName()
+                                                .equalsIgnoreCase(name)
+                                );
+
+                if (!alreadyExists) {
+
+                    PlaceResponse place =
+                            new PlaceResponse(
+                                    name,
+                                    "Tourist Place",
+                                    longitude,
+                                    latitude
+                            );
+
+                    places.add(place);
                 }
             }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Unable to find tourist places along route"
+            );
+
+            e.printStackTrace();
         }
 
-        return allPlaces;
+        return places;
     }
 }
